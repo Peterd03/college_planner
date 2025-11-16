@@ -10,89 +10,131 @@ from main import (
 # ---------------------------------------------------------
 # PAGE CONFIG
 # ---------------------------------------------------------
-st.set_page_config(page_title="College Planner", layout="wide")
+st.set_page_config(page_title="College Match Planner", layout="wide")
 
 # ---------------------------------------------------------
-# CSS (LOVABLE-STYLE)
+# GLOBAL CSS — BEAUTIFUL LOVABLE-STYLE UI (WITH DROPDOWN FIX)
 # ---------------------------------------------------------
 st.markdown("""
 <style>
 
 html, body, .block-container {
-    background-color: white !important;
+    background-color: #ffffff !important;
     font-family: 'Inter', sans-serif;
 }
 
-h1, h2, h3, p, div, label {
-    color: #111 !important;
+h1, h2, h3, h4, label, p, div, span {
+    color: #000000 !important;
 }
 
-/* Center Cards */
-.centered {
-    max-width: 700px;
+/* Centered Content */
+.center {
+    max-width: 780px;
     margin-left: auto;
     margin-right: auto;
+    padding-top: 20px;
 }
 
-/* Pretty Cards */
+/* Nice Card */
 .card {
     background: #ffffff;
     padding: 32px;
     border-radius: 22px;
-    box-shadow: 0 4px 25px rgba(0,0,0,0.07);
-    border: 1px solid #eee;
-    margin-top: 40px;
+    border: 1px solid #e5e5e5;
+    margin-top: 35px;
+    box-shadow: 0px 4px 20px rgba(0,0,0,0.06);
 }
 
-/* Beautiful Button */
+/* Buttons */
 .stButton > button {
     width: 100%;
-    background-color: #3b82f6;
+    background-color: #2563eb !important;
     color: white !important;
-    padding: 14px 20px;
-    font-size: 18px;
-    border-radius: 12px;
-    border: none;
-    transition: 0.15s ease;
+    border-radius: 12px !important;
+    padding: 14px 18px !important;
+    font-size: 18px !important;
+    border: none !important;
+    transition: 0.2s ease-in-out;
 }
-
 .stButton > button:hover {
-    background-color: #1d4ed8;
+    background-color: #1d4ed8 !important;
 }
 
-/* Hide default Streamlit tabs from rerendering */
-.block-container {
-    padding-top: 30px;
+/* ------------------------------------------------- */
+/*           DROPDOWN / SELECTBOX FIXES              */
+/* ------------------------------------------------- */
+
+/* Main closed selectbox */
+.stSelectbox div[data-baseweb="select"] > div {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    border-radius: 10px !important;
+    border: 1px solid #cccccc !important;
+}
+
+/* Dropdown menu container */
+.stSelectbox div[data-baseweb="popover"] {
+    background-color: #ffffff !important;
+    border-radius: 10px !important;
+    color: #000000 !important;
+    border: 1px solid #cccccc !important;
+}
+
+/* Dropdown items */
+.stSelectbox ul > li {
+    background-color: #ffffff !important;
+    color: #000000 !important;
+    padding: 8px 14px !important;
+    border-radius: 6px !important;
+}
+
+/* Hovered option */
+.stSelectbox ul > li:hover {
+    background-color: #eff6ff !important;
+    color: #000000 !important;
+}
+
+/* Selected option inside dropdown */
+.stSelectbox ul > li[data-selected="true"] {
+    background-color: #dbeafe !important;
+    color: #000000 !important;
+}
+
+/* Radio buttons text */
+.stRadio div[role="radiogroup"] label {
+    color: black !important;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 # ---------------------------------------------------------
-# PAGE ROUTER
+# PAGE ROUTER (INSTANT)
 # ---------------------------------------------------------
 if "page" not in st.session_state:
     st.session_state.page = "home"
 
-def go(page_name):
-    st.session_state.page = page_name
+def goto(page):
+    st.session_state.page = page
 
 
 # ---------------------------------------------------------
 # HOME PAGE
 # ---------------------------------------------------------
 if st.session_state.page == "home":
-    st.markdown("<div class='centered'>", unsafe_allow_html=True)
 
+    st.markdown("<div class='center'>", unsafe_allow_html=True)
     st.markdown("<div class='card'>", unsafe_allow_html=True)
-    st.markdown("# 🎓 College Match Planner")
-    st.markdown("Welcome! This tool will help you find colleges that fit your academic, financial, and personal preferences.")
+
+    st.markdown("<h1>🎓 College Match Planner</h1>")
+    st.markdown(
+        "Find your perfect college match based on affordability, academics, and personal preferences."
+    )
 
     if st.button("Start Survey →"):
-        go("survey")
+        goto("survey")
 
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -100,31 +142,47 @@ if st.session_state.page == "home":
 # ---------------------------------------------------------
 elif st.session_state.page == "survey":
 
-    st.markdown("<div class='centered'>", unsafe_allow_html=True)
+    st.markdown("<div class='center'>", unsafe_allow_html=True)
     st.markdown("<div class='card'>", unsafe_allow_html=True)
 
-    st.markdown("## 🧑‍🎓 Tell Us About Yourself")
+    # --------- Background Info ---------
+    st.markdown("## 🧑‍🎓 Background Information")
 
-    # --- Section 1
-    st.markdown("### Background")
+    state_pref = st.selectbox("Preferred State", [
+        "CA","NY","TX","FL","WA","MA","IL","GA","NC","VA","Other"
+    ])
 
-    state_pref = st.selectbox("Preferred State", ["CA","NY","TX","FL","WA","MA","IL","GA","NC","VA","Other"])
-    residency_pref = st.radio("Residency Preference", {"In-State": "in_state", "Out-of-State": "oos"})
-    family_earnings = st.slider("Family Annual Earnings", 0, 200000, 60000, step=5000)
-    desired_degree = st.selectbox("Minimum Degree Level", list(DEGREE_ORDER.keys()))
+    residency_pref = st.radio(
+        "Residency Preference",
+        {"In-State":"in_state", "Out-of-State":"oos"}
+    )
+
+    family_earnings = st.slider(
+        "Family Annual Earnings", 0, 200000, 60000, step=5000
+    )
+
+    desired_degree = st.selectbox(
+        "Minimum Degree Level",
+        list(DEGREE_ORDER.keys())
+    )
 
     st.markdown("---")
-    st.markdown("### School Preferences")
+
+    # --------- Preferences ---------
+    st.markdown("## 🏫 School Preferences")
 
     sector = st.selectbox("School Sector", ["Public","Private","For-Profit"])
     locality = st.selectbox("Campus Setting", ["City","Suburb","Town","Rural"])
     preferred_msi = st.selectbox("MSI Preference", ["none"] + MSI_CATEGORIES)
-    total_enrollment = st.slider("Preferred Enrollment Size", 1000, 60000, 15000)
-    admit_rate = st.slider("Preferred Admit Rate (%)", 1, 100, 50) / 100
+
+    total_enrollment = st.slider("Enrollment Size Preference", 1000, 60000, 15000)
+    admit_rate = st.slider("Target Admit Rate (%)", 1, 100, 50) / 100
     sfr = st.slider("Preferred Student–Faculty Ratio", 5, 25, 12)
 
     st.markdown("---")
-    st.markdown("### Importance Rating (1 = Low, 5 = High)")
+
+    # --------- Weights ---------
+    st.markdown("## ⚖️ Importance Ratings (1 = Low, 5 = High)")
 
     w_sector = st.slider("Sector Importance", 1, 5, 3)
     w_locality = st.slider("Campus Setting Importance", 1, 5, 3)
@@ -133,7 +191,7 @@ elif st.session_state.page == "survey":
     w_admit = st.slider("Admit Rate Importance", 1, 5, 3)
     w_sfr = st.slider("Student–Faculty Ratio Importance", 1, 5, 3)
 
-    # ---- Submit Survey
+    # --------- Submit Survey ---------
     if st.button("See Results →"):
         st.session_state.survey = {
             "state_pref": state_pref,
@@ -157,10 +215,9 @@ elif st.session_state.page == "survey":
                 "student_faculty_ratio": w_sfr
             }
         }
-        go("results")
+        goto("results")
 
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------
@@ -168,12 +225,13 @@ elif st.session_state.page == "survey":
 # ---------------------------------------------------------
 elif st.session_state.page == "results":
 
-    st.markdown("<div class='centered'>", unsafe_allow_html=True)
+    st.markdown("<div class='center'>", unsafe_allow_html=True)
     st.markdown("<div class='card'>", unsafe_allow_html=True)
 
-    st.markdown("## 🎯 Your Matches")
+    st.markdown("## 🎯 Your College Matches")
 
     s = st.session_state.survey
+
     try:
         results = build_pipeline(
             s["state_pref"],
@@ -183,16 +241,18 @@ elif st.session_state.page == "results":
             s["user_prefs"],
             s["user_weights"]
         )
-        top_n = st.slider("How many colleges to display?", 5, 50, 20)
-        output = display_output(results, top_n)
-        st.dataframe(output, use_container_width=True)
+
+        how_many = st.slider("How many colleges to show?", 5, 50, 20)
+        out = display_output(results, how_many)
+
+        st.dataframe(out, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error generating results: {e}")
 
     if st.button("← Back to Home"):
-        go("home")
+        goto("home")
 
-    st.markdown("</div>", unsafe_allow_html=True)
-    st.markdown("</div>", unsafe_allow_html=True)
+    st.markdown("</div></div>", unsafe_allow_html=True)
+
 
