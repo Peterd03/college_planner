@@ -253,26 +253,3 @@ def display_output(df, n=20):
     return df[["similarity_score","institution_name","state","city","msi_type","coa_in_state","coa_out_state","admissions_url",
                "total_enrollment","admit_rate"]].head(n)
 
-# example config
-user_prefs_example = {
-    "sector":"Private",
-    "locality":"Suburb",
-    "preferred_msi":"AANAPII",
-    "total_enrollment":5000,
-    "admit_rate":0.50,
-    "student_faculty_ratio":5
-}
-
-user_weights_example = {
-    "sector":5,
-    "locality":4,
-    "msi":2,
-    "total_enrollment":1,
-    "admit_rate":4,
-    "student_faculty_ratio":3
-}
-
-# example call
-recs = build_pipeline("CA",["in_state", "out_state"],60000,"bachelor",user_prefs_example,user_weights_example)
-display_output(recs, 20)
-
