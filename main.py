@@ -1,7 +1,14 @@
+
 import duckdb
 import pandas as pd
 import numpy as np
 import re
+from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
+import plotly.express as px
+
+res_path = "Datathon_Fa25/data/College_Results.csv"
+aff_path = "Datathon_Fa25/data/Affordability_Gap.csv"
 
 aff_tbl = [
     "Unit ID", "Student Family Earnings Ceiling", "State Abbreviation", "City", "Sector Name", "Degree of Localization Name",
@@ -52,8 +59,6 @@ res_map = {
     "First-Time, Full-Time Retention Rate": "retention_rate"
 }
 
-res_path = "data/College_Results.csv"
-aff_path = "data/Affordability_Gap.csv"
 
 INCOME_THRESHOLDS = {
     30000: (0, 30000),
@@ -153,13 +158,25 @@ def filter_schools(df, state_pref, residency_pref, family_earnings, desired_degr
         out = out[out["state"] != state_pref]
 
     if family_earnings is not None:
+    
+        # Case 1: Income fits inside documented bin
         matches = out[
             (out["family_earn_low"].notna()) &
             (out["family_earn_low"] <= family_earnings) &
             (family_earnings <= out["family_earn_high"])
         ]
-        catch_all = out[out["family_earn_low"].isna() & out["family_earn_high"].isna()]
-        out = pd.concat([matches, catch_all], ignore_index=True)
+    
+        # Case 2: Income exceeds documented bins → keep highest bin per school
+        if matches.empty:
+            highest_rows = (
+                out[out["family_earn_low"].notna()]
+                .sort_values(["unitid", "family_earn_low"], ascending=[True, False])
+                .drop_duplicates("unitid")
+            )
+            out = highest_rows
+        else:
+            catch_all = out[out["family_earn_low"].isna() & out["family_earn_high"].isna()]
+            out = pd.concat([matches, catch_all], ignore_index=True)
 
     if desired_degree is not None:
         lvl = DEGREE_ORDER.get(desired_degree, -1)
@@ -178,26 +195,21 @@ def categorical_similarity(value, target, sim_matrix):
 
 def msi_distance(row, preferred_msi):
     school_msis = [c for c in MSI_CATEGORIES if row.get(c,0)==1]
-
-    # --- CASE 1: Student does NOT care about MSI
     if preferred_msi is None or preferred_msi == "none":
         if len(school_msis) == 0:
-            return 0        # normal school = no penalty
+            return 0
         else:
-            return 1        # MSI school = small penalty
+            return 1
 
-    # --- CASE 2: Student chose a specific MSI category
     if preferred_msi not in MSI_CATEGORIES:
-        return 0  # safety fallback
-
+        return 0
     school_pref = row.get(preferred_msi,0)==1
-
     if school_pref:
-        return 0        # exact match
+        return 0
     elif len(school_msis) == 0:
-        return 1        # no MSI but expected one
+        return 1
     else:
-        return 2        # wrong MSI type
+        return 2
 
 def compute_school_score(df, user_prefs, user_weights):
     numeric_features = ["total_enrollment","admit_rate","student_faculty_ratio"]
@@ -226,21 +238,124 @@ def compute_school_score(df, user_prefs, user_weights):
 
     out=df.copy()
     out["distance_score"] = scores
-    alpha = 1
-    out["similarity_score"] = np.exp(-alpha * out["distance_score"])
+    k = 6   # curvature; 6–10 is good range
+    m = out["distance_score"].median()  # center point
+    out["similarity_score"] = 1 / (1 + np.exp(k * (out["distance_score"] - m)))
     out = out.drop(columns=["distance_score"])
     return out.sort_values("similarity_score", ascending=False).reset_index(drop=True)
+
+def _normalize_rate(series):
+    s = series.astype(float)
+    mask = s > 1
+    s[mask] = s[mask] / 100.0
+    return s
+
+def compute_roi(df, state_pref, residency_pref):
+    d = df.copy()
+
+    g = _normalize_rate(d["grad_rate_4yr"])
+    r = _normalize_rate(d["retention_rate"])
+    a = _normalize_rate(d["admit_rate"])
+
+    annual_cost = pd.Series(np.nan, index=d.index)
+
+    if residency_pref == "in_state":
+        in_mask = d["state"] == state_pref
+        annual_cost[in_mask] = d.loc[in_mask, "coa_in_state"]
+        annual_cost[~in_mask] = d.loc[~in_mask, "coa_out_state"]
+    elif residency_pref == "oos":
+        annual_cost = d["coa_out_state"]
+    else:
+        annual_cost = d["net_price"]
+
+    annual_cost = annual_cost.fillna(d["net_price"])
+
+    g_eff = g.copy()
+    g_eff = g_eff.clip(lower=0.5)
+    years = 4.0 / g_eff
+    years = years.clip(upper=8.0)
+
+    expected_cost = annual_cost * years
+
+    earnings = d["median_earnings_10yr"].astype(float)
+    earnings_factor = earnings * g * r
+    signal_boost = 1.0 - a
+    expected_earnings = earnings_factor * (1.0 + 0.25 * signal_boost)
+
+    work = d["weekly_hours_gap"].fillna(0.0).astype(float)
+    work_penalty = (work / 40.0).clip(lower=0.0, upper=1.0)
+
+    roi_raw = (expected_earnings - expected_cost) / expected_cost.replace(0, np.nan)
+    roi = roi_raw * (1.0 - work_penalty)
+
+    d["roi"] =( roi - np.mean(roi)) / np.std(roi)
+    d["roi"] = d["roi"].fillna(-99.9)
+    return d
+
+def build_pca_plot(df, user_prefs):
+    numeric_features = ["total_enrollment","admit_rate","student_faculty_ratio"]
+
+    df_numeric = df[numeric_features].astype(float)
+    valid_mask = df_numeric.notna().all(axis=1)
+
+    if valid_mask.sum() < 3:
+        fig = px.scatter(title="Not enough numeric data for PCA visualization.")
+        return fig
+
+    X = df_numeric[valid_mask]
+
+    scaler = StandardScaler()
+    X_scaled = scaler.fit_transform(X)
+
+    pca = PCA(n_components=2)
+    coords = pca.fit_transform(X_scaled)
+
+    df_plot = df.copy()
+    df_plot["PC1"] = np.nan
+    df_plot["PC2"] = np.nan
+    df_plot.loc[valid_mask, "PC1"] = coords[:,0]
+    df_plot.loc[valid_mask, "PC2"] = coords[:,1]
+
+    user_vec = pd.DataFrame([user_prefs])[numeric_features].astype(float)
+
+    for col in numeric_features:
+        if np.isnan(user_vec[col].values[0]):
+            user_vec[col] = X[col].median()
+
+    user_scaled = scaler.transform(user_vec)
+    user_coord = pca.transform(user_scaled)[0]
+
+    fig = px.scatter(
+        df_plot,
+        x="PC1",
+        y="PC2",
+        hover_name="institution_name",
+        color="similarity_score",
+        color_continuous_scale="Viridis",
+        title="College Landscape (PCA Projection)"
+    )
+
+    fig.add_scatter(
+        x=[user_coord[0]],
+        y=[user_coord[1]],
+        mode="markers+text",
+        marker=dict(size=18, symbol="star", color="red"),
+        text=["YOU"],
+        textposition="top center",
+        name="Your Preference"
+    )
+
+    return fig
 
 def build_pipeline(state_pref, residency_pref, family_earnings, desired_degree, user_prefs, user_weights):
     aff = load_affordability_data(aff_path)
     res = load_results_data(res_path)
-
     filtered = filter_schools(aff, state_pref, residency_pref, family_earnings, desired_degree)
-
     merged = pd.merge(filtered, res, on="unitid", how="inner").drop_duplicates("unitid")
-
     ranked = compute_school_score(merged, user_prefs, user_weights)
+    ranked = compute_roi(ranked, state_pref, residency_pref)
     return ranked
+
 
 def display_output(df, n=20):
     df = df.copy()
@@ -250,6 +365,6 @@ def display_output(df, n=20):
     )
     df = df.sort_values("similarity_score", ascending=False).reset_index(drop=True)
     df["similarity_score"] = (df["similarity_score"] * 100).round(1).astype(str) + "%"
-    return df[["similarity_score","institution_name","state","city","msi_type","coa_in_state","coa_out_state","admissions_url",
-               "total_enrollment","admit_rate"]].head(n)
+    return df[["similarity_score","roi","institution_name","state","city","msi_type","coa_in_state","coa_out_state",
+               "total_enrollment","admit_rate","admissions_url"]]
 
