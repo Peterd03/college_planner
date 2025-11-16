@@ -52,8 +52,8 @@ res_map = {
     "First-Time, Full-Time Retention Rate": "retention_rate"
 }
 
-res_path = "/home/jovyan/datathon/data/College_Results.csv"
-aff_path = "/home/jovyan/datathon/data/Affordability_Gap.csv"
+res_path = "data/College_Results.csv"
+aff_path = "data/Affordability_Gap.csv"
 
 INCOME_THRESHOLDS = {
     30000: (0, 30000),
@@ -275,3 +275,4 @@ user_weights_example = {
 # example call
 recs = build_pipeline("CA",["in_state", "out_state"],60000,"bachelor",user_prefs_example,user_weights_example)
 display_output(recs, 20)
+
