@@ -1,6 +1,6 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
+import pandas as pd
 
 from main import (
     build_pipeline,
@@ -9,197 +9,211 @@ from main import (
     DEGREE_ORDER
 )
 
-# ============================================================
-# PAGE CONFIG + WHITE THEME
-# ============================================================
+# ---------------------------------------------------------
+# PAGE CONFIG + FULL WHITE THEME
+# ---------------------------------------------------------
 st.set_page_config(
     page_title="College Planner",
-    layout="centered"
+    layout="wide"
 )
 
-# Inject CSS for custom styling
+# Inject custom CSS for white background + modern style
 st.markdown("""
 <style>
 
-body {
+html, body, [class*="css"] {
     background-color: white !important;
 }
 
 .block-container {
     padding-top: 2rem !important;
+    padding-bottom: 3rem !important;
+    background-color: white !important;
 }
 
-h1, h2, h3 {
-    color: #1e3a8a !important;
-    font-weight: 700 !important;
+h1 {
+    text-align: center;
+    font-weight: 800;
+    color: #1e3a8a;
+    letter-spacing: -0.5px;
 }
 
 .section-card {
-    padding: 1.3rem 1.5rem;
+    padding: 20px 24px;
+    background: #ffffff;
     border-radius: 12px;
-    background: #fafafa;
-    border: 1px solid #e5e7eb;
-    margin-bottom: 1.3rem;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0px 2px 6px rgba(0,0,0,0.05);
+    margin-bottom: 26px;
 }
 
-.button-row {
+/* WEIGHT BUTTONS */
+.weight-container {
     display: flex;
-    gap: 0.5rem;
-    margin-top: 0.4rem;
+    justify-content: space-between;
+    margin-top: 8px;
 }
 
-.button-row button {
-    flex-grow: 1;
-}
-
-.logo {
-    white-space: pre;
-    font-family: monospace;
-    font-size: 14px;
-    color: #1e3a8a;
-    line-height: 1.1;
+.weight-btn {
+    flex: 1;
+    padding: 10px 0;
+    margin-right: 8px;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    background: #f1f5f9;
     text-align: center;
+    cursor: pointer;
+    font-size: 16px;
+    transition: 0.15s;
+    font-weight: 600;
+}
+
+.weight-btn:hover {
+    background: #dbeafe;
+}
+
+.weight-btn.selected {
+    background: #2563eb !important;
+    color: white !important;
+    border-color: #1d4ed8 !important;
+}
+
+.stButton>button {
+    background-color: #2563eb;
+    color: white;
+    border-radius: 10px;
+    padding: 10px 18px;
+    font-size: 17px;
+    border: none;
+    font-weight: 600;
+    transition: 0.2s;
+}
+
+.stButton>button:hover {
+    background-color: #1d4ed8;
 }
 
 </style>
 """, unsafe_allow_html=True)
 
 
-# ============================================================
-# ASCII LOGO
-# ============================================================
+# ---------------------------------------------------------
+# CLEAN MODERN HEADER (NO ASCII)
+# ---------------------------------------------------------
 st.markdown("""
-<div class="logo">
-   ___      _ _       _                ____  _                              
-  / __| ___| | | __ _| |_ ___ _ _     |  _ \\| | __ _ _ __   __ _  ___ _ __  
-  \\__ \\/ -_) | |/ _` |  _/ -_) '_|____| |_) | |/ _` | '_ \\ / _` |/ _ \\ '_ \\ 
-  |___/\\___|_|_|\\__,_|\\__\\___|_|_____|  __/|_|\\__,_| | | | (_| |  __/ | | |
-                                      |_|             |_| |_|\\__,_|\\___|_| |_|
-                                      
-                 COLLEGE MATCH & AFFORDABILITY PLANNER
-</div>
-""", unsafe_allow_html=True)
+# 🎓 College Match & Affordability Planner
+### Find the colleges that match your goals, preferences, and financial situation.
+""")
 
-st.markdown("<br>", unsafe_allow_html=True)
+st.markdown("---")
 
 
-# Helper function for 1–5 button selector
-def weight_selector(label, key):
+# ---------------------------------------------------------
+# Weight Button Component
+# ---------------------------------------------------------
+def weight_buttons(label, key):
     st.write(f"**{label}**")
+
+    if key not in st.session_state:
+        st.session_state[key] = 3  # default importance
+
     cols = st.columns(5)
-    selected = st.session_state.get(key, 3)
 
+    # Render visual buttons and clickable overlays
     for i, col in enumerate(cols, start=1):
-        if col.button(str(i), key=f"{key}_{i}"):
+
+        # SELECTED BUTTON STYLE
+        if st.session_state[key] == i:
+            col.markdown(
+                f"<div class='weight-btn selected'>{i}</div>", unsafe_allow_html=True
+            )
+        else:
+            col.markdown(
+                f"<div class='weight-btn'>{i}</div>", unsafe_allow_html=True
+            )
+
+        # INVISIBLE BUTTON HANDLE
+        if col.button(" ", key=f"{key}_{i}"):
             st.session_state[key] = i
-            selected = i
 
-    return selected
+    return st.session_state[key]
 
 
-# ============================================================
-# SECTION 1 — YOUR BACKGROUND
-# ============================================================
-st.markdown("## 🧑‍🎓 1. About You")
+# ---------------------------------------------------------
+# SECTION 1 — STUDENT BACKGROUND
+# ---------------------------------------------------------
+st.markdown("## 🧑‍🎓 1. Your Background")
 with st.container():
-    st.write('<div class="section-card">', unsafe_allow_html=True)
+    st.write("<div class='section-card'>", unsafe_allow_html=True)
 
-    state_pref = st.selectbox(
-        "🌎 Which state do you want to study in?",
-        ["CA","NY","TX","FL","WA","MA","IL","GA","NC","VA","Other"],
-        index=0
-    )
+    state_pref = st.selectbox("🌎 Preferred Study State", 
+                              ["CA","NY","TX","FL","WA","MA","IL","GA","NC","VA","Other"])
 
-    residency_pref = st.radio(
-        "🏠 Will you apply as:",
-        {
-            "In-State Student": "in_state",
-            "Out-of-State Student": "oos"
-        }
-    )
+    residency_pref = st.radio("🏠 Residency Status",
+                              {"In-State": "in_state", "Out-of-State": "oos"})
 
-    family_earnings = st.slider(
-        "💵 Estimated Family Annual Earnings",
-        0, 200000, 60000, step=5000
-    )
+    family_earnings = st.slider("💵 Annual Family Earnings", 0, 200000, 60000, step=5000)
 
-    desired_degree = st.selectbox(
-        "🎓 Minimum Degree Level",
-        list(DEGREE_ORDER.keys()),
-        index=2
-    )
+    desired_degree = st.selectbox("🎓 Minimum Degree Level", list(DEGREE_ORDER.keys()))
 
-    st.write('</div>', unsafe_allow_html=True)
+    st.write("</div>", unsafe_allow_html=True)
 
 
-# ============================================================
+# ---------------------------------------------------------
 # SECTION 2 — PREFERENCES
-# ============================================================
+# ---------------------------------------------------------
 st.markdown("## ⭐ 2. Your Preferences")
 with st.container():
-    st.write('<div class="section-card">', unsafe_allow_html=True)
+    st.write("<div class='section-card'>", unsafe_allow_html=True)
 
-    sector = st.selectbox("🏛️ Preferred School Sector:", ["Public","Private","For-Profit"])
+    sector = st.selectbox("🏛️ School Sector Preference", ["Public", "Private", "For-Profit"])
+    locality = st.selectbox("📍 Campus Setting", ["City", "Suburb", "Town", "Rural"])
+    preferred_msi = st.selectbox("🏫 MSI Preference", ["none"] + MSI_CATEGORIES)
 
-    locality = st.selectbox("📍 Preferred Campus Setting:", ["City","Suburb","Town","Rural"])
-
-    preferred_msi = st.selectbox(
-        "🏫 MSI Preference:",
-        ["none"] + MSI_CATEGORIES
-    )
-
-    total_enrollment = st.slider("👥 Total Enrollment Preference", 1000, 60000, 15000)
-
-    admit_rate = st.slider("📊 Preferred Admit Rate (%)", 1, 100, 50) / 100
-
-    student_faculty_ratio = st.slider("🧑‍🏫 Student–Faculty Ratio", 5, 25, 12)
+    total_enrollment = st.slider("👥 Enrollment Size Preference", 1000, 60000, 15000)
+    admit_rate = st.slider("📊 Target Admit Rate (%)", 1, 100, 50) / 100
+    student_faculty_ratio = st.slider("🧑‍🏫 Student–Faculty Ratio Preference", 5, 25, 12)
 
     user_prefs = {
         "sector": sector,
         "locality": locality,
-        "preferred_msi": preferred_msi if preferred_msi != "none" else None,
+        "preferred_msi": None if preferred_msi == "none" else preferred_msi,
         "total_enrollment": total_enrollment,
         "admit_rate": admit_rate,
         "student_faculty_ratio": student_faculty_ratio
     }
 
-    st.write('</div>', unsafe_allow_html=True)
+    st.write("</div>", unsafe_allow_html=True)
 
 
-
-# ============================================================
-# SECTION 3 — WEIGHTS (BUTTONS 1–5)
-# ============================================================
-st.markdown("## ⚖️ 3. How Important Are These Factors?")
+# ---------------------------------------------------------
+# SECTION 3 — WEIGHT SLIDERS AS BUTTONS
+# ---------------------------------------------------------
+st.markdown("## ⚖️ 3. Importance Levels")
 with st.container():
-    st.write('<div class="section-card">', unsafe_allow_html=True)
+    st.write("<div class='section-card'>", unsafe_allow_html=True)
 
     user_weights = {
-        "sector": weight_selector("Sector (Public vs Private)", "w_sector"),
-        "locality": weight_selector("Campus Setting (City/Suburb/Town/Rural)", "w_locality"),
-        "msi": weight_selector("Minority Serving Institution Match", "w_msi"),
-        "total_enrollment": weight_selector("Enrollment Size", "w_enroll"),
-        "admit_rate": weight_selector("Admit Rate", "w_admit"),
-        "student_faculty_ratio": weight_selector("Student–Faculty Ratio", "w_sfr")
+        "sector": weight_buttons("Sector Importance", "w_sector"),
+        "locality": weight_buttons("Campus Setting Importance", "w_locality"),
+        "msi": weight_buttons("MSI Importance", "w_msi"),
+        "total_enrollment": weight_buttons("Enrollment Size Importance", "w_enroll"),
+        "admit_rate": weight_buttons("Admit Rate Importance", "w_admit"),
+        "student_faculty_ratio": weight_buttons("Student–Faculty Ratio Importance", "w_sfr")
     }
 
-    st.write('</div>', unsafe_allow_html=True)
+    st.write("</div>", unsafe_allow_html=True)
 
 
-# ============================================================
-# SECTION 4 — RESULTS SETTINGS
-# ============================================================
-st.markdown("## 🔍 4. Result Settings")
-top_n = st.slider("Number of Colleges to Show:", 5, 50, 20)
+# ---------------------------------------------------------
+# SECTION 4 — RUN TOOL
+# ---------------------------------------------------------
+st.markdown("## 🔍 4. View Your Top College Matches")
 
+top_n = st.slider("Number of Colleges to Display", 5, 50, 20)
 
-# ============================================================
-# SECTION 5 — RUN THE MODEL
-# ============================================================
-st.markdown("---")
-
-if st.button("🔎 Find My Best College Matches"):
-    st.write("### 🎉 Your Top Matches")
+if st.button("🔎 Find My Colleges"):
+    st.markdown("### 🎉 Your Best Matches")
 
     try:
         results = build_pipeline(
@@ -214,4 +228,5 @@ if st.button("🔎 Find My Best College Matches"):
         st.dataframe(out, use_container_width=True)
 
     except Exception as e:
-        st.error(f"Error: {e}")
+        st.error(f"Error loading results: {e}")
+
