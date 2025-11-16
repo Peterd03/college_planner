@@ -53,8 +53,8 @@ res_map = {
 	"First-Time, Full-Time Retention Rate": "retention_rate"
 }
 
-res_path = "/home/jovyan/datathon/data/College_Results.csv"
-aff_path = "/home/jovyan/datathon/data/Affordability_Gap.csv"
+res_path = "data/College_Results.csv"
+aff_path = "data/Affordability_Gap.csv"
 
 
 LOCALITY_SIM_MATRIX = {
@@ -250,3 +250,4 @@ user_weights_example = {
 
 recs = build_pipeline("CA", "in_state", "bachelor", user_prefs_example, user_weights_example, 50)
 print(recs[["institution_name", "match_score"]])
+
