@@ -1,11 +1,6 @@
 import streamlit as st
 import pandas as pd
-from main import (
-    build_pipeline,
-    display_output,
-    MSI_CATEGORIES,
-    build_pca_plot
-)
+from main import build_pipeline, display_output, MSI_CATEGORIES, build_pca_plot
 
 st.set_page_config(page_title="College Match & ROI Tool", layout="wide")
 
@@ -188,5 +183,3 @@ if submitted:
         st.plotly_chart(pca_fig, use_container_width=True)
     except Exception:
         st.warning("Not enough data to generate PCA visualization for this result set.")
-
-
