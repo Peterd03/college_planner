@@ -158,3 +158,28 @@ if submitted:
         )
 
         results = display_output(ranked_df)
+
+    st.success("Done! Your personalized college match results are below.")
+
+    st.subheader("Recommended Colleges")
+    st.data_editor(
+        results,
+        use_container_width=True,
+        hide_index=True,
+        disabled=True
+    )
+    csv_data = results.to_csv(index=False)
+    st.download_button(
+        label="📁 Download Full Results (CSV)",
+        data=csv_data,
+        file_name="college_matches.csv",
+        mime="text/csv"
+    )
+
+    st.subheader("Visualizing Your Fit Among Colleges")
+
+    try:
+        pca_fig = build_pca_plot(ranked_df, user_prefs)
+        st.plotly_chart(pca_fig, use_container_width=True)
+    except Exception:
+        st.warning("Not enough data to generate PCA visualization for this result set.")
