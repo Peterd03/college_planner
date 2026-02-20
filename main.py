@@ -6,8 +6,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 import plotly.express as px
 
-res_path = "Datathon_Fa25/data/College_Results.csv"
-aff_path = "Datathon_Fa25/data/Affordability_Gap.csv"
+res_path = "data/College_Results.csv"
+aff_path = "data/affordability.csv"
 
 aff_tbl = [
     "Unit ID", "Student Family Earnings Ceiling", "State Abbreviation", "City", "Sector Name", "Degree of Localization Name",
@@ -365,3 +365,4 @@ def display_output(df, n=20):
     df["similarity_score"] = (df["similarity_score"] * 100).round(1).astype(str) + "%"
     return df[["similarity_score","roi","institution_name","state","city","msi_type","coa_in_state","coa_out_state",
                "total_enrollment","admit_rate","admissions_url"]]
+
