@@ -1,4 +1,3 @@
-
 import duckdb
 import pandas as pd
 import numpy as np
@@ -157,26 +156,25 @@ def filter_schools(df, state_pref, residency_pref, family_earnings, desired_degr
     elif residency_pref == "oos":
         out = out[out["state"] != state_pref]
 
+    matches = pd.DataFrame()
+
     if family_earnings is not None:
-    
-        # Case 1: Income fits inside documented bin
         matches = out[
-            (out["family_earn_low"].notna()) &
-            (out["family_earn_low"] <= family_earnings) &
-            (family_earnings <= out["family_earn_high"])
+            out["family_earn_low"].notna()
+            & (out["family_earn_low"] <= family_earnings)
+            & (family_earnings <= out["family_earn_high"])
         ]
-    
-        # Case 2: Income exceeds documented bins → keep highest bin per school
-        if matches.empty:
-            highest_rows = (
-                out[out["family_earn_low"].notna()]
-                .sort_values(["unitid", "family_earn_low"], ascending=[True, False])
-                .drop_duplicates("unitid")
-            )
-            out = highest_rows
-        else:
-            catch_all = out[out["family_earn_low"].isna() & out["family_earn_high"].isna()]
-            out = pd.concat([matches, catch_all], ignore_index=True)
+
+    if matches.empty:
+        highest_rows = (
+            out[out["family_earn_low"].notna()]
+            .sort_values(["unitid", "family_earn_low"], ascending=[True, False])
+            .drop_duplicates("unitid")
+        )
+        out = highest_rows
+    else:
+        catch_all = out[out["family_earn_low"].isna() & out["family_earn_high"].isna()]
+        out = pd.concat([matches, catch_all], ignore_index=True)
 
     if desired_degree is not None:
         lvl = DEGREE_ORDER.get(desired_degree, -1)
@@ -238,8 +236,8 @@ def compute_school_score(df, user_prefs, user_weights):
 
     out=df.copy()
     out["distance_score"] = scores
-    k = 6   # curvature; 6–10 is good range
-    m = out["distance_score"].median()  # center point
+    k = 6
+    m = out["distance_score"].median() 
     out["similarity_score"] = 1 / (1 + np.exp(k * (out["distance_score"] - m)))
     out = out.drop(columns=["distance_score"])
     return out.sort_values("similarity_score", ascending=False).reset_index(drop=True)
@@ -367,4 +365,3 @@ def display_output(df, n=20):
     df["similarity_score"] = (df["similarity_score"] * 100).round(1).astype(str) + "%"
     return df[["similarity_score","roi","institution_name","state","city","msi_type","coa_in_state","coa_out_state",
                "total_enrollment","admit_rate","admissions_url"]]
-
